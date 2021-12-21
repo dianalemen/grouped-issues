@@ -1,0 +1,27 @@
+{
+  "name": "@linter-extension/grouped-issues",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "grouped-issues": "index.js"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "fs": "^0.0.1-security"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dianalemen/grouped-issues.git"
+  },
+  "author": "Diana Lemen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dianalemen/grouped-issues/issues"
+  },
+  "homepage": "https://github.com/dianalemen/grouped-issues#readme"
+}
