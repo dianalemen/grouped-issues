@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "bin": {
-    "grouped-issues": "index.js"
+    "group-issues": "./bin/index.js"
   },
   "dependencies": {
     "child_process": "^1.0.2",
