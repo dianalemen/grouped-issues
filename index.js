@@ -21,7 +21,7 @@ function streamToString(fStream, sStream, cb) {
           .filter((val) => val.includes("@"))
           .map((val) => val.replaceAll("**", "").replaceAll("*", ""))
           .reduce((acc, val) => {
-            const [filePath, owner] = val.split(" ");
+            const [filePath, owner] = val.replace(/\s\s+/g, " ").split(" ");
             acc[owner]
               ? (acc[owner] = [...acc[owner], filePath])
               : (acc[owner] = [filePath]);
@@ -38,15 +38,20 @@ function streamToString(fStream, sStream, cb) {
 }
 
 const writeIntoFile = (errors, owners) => {
+  const grouppedErrors = [];
+  const shared = {};
   const gruoped = Object.entries(owners).reduce((acc, [key, value]) => {
     const gruopedTest = Object.entries(errors).reduce(
       (errAcc, [errKey, errVal]) => {
         errVal.forEach((error) => {
           value.forEach((errPath) => {
             if (error.includes(errPath.trim())) {
+              grouppedErrors.push(error);
               errAcc[errKey] = errAcc[errKey]
                 ? [...errAcc[errKey], error]
                 : [error];
+            } else {
+              shared[error] = errKey;
             }
           });
         });
@@ -58,7 +63,18 @@ const writeIntoFile = (errors, owners) => {
     return acc;
   }, {});
 
-  stdout.write(JSON.stringify(gruoped, null, 2));
+  const newShared = Object.entries(shared).reduce(
+    (acc, [key, val]) => {
+      if (!grouppedErrors.find((item) => item === key)) {
+        acc.SHARED[val] = acc.SHARED[val] ? [...acc.SHARED[val], key] : [key];
+      }
+
+      return acc;
+    },
+    { SHARED: {} }
+  );
+
+  stdout.write(JSON.stringify({ ...gruoped, ...newShared }, null, 2));
 };
 
 const waitForWriting = async () => {
