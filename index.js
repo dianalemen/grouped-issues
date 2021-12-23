@@ -77,7 +77,8 @@ const writeIntoFile = (errors, owners) => {
   stdout.write(JSON.stringify({ ...gruoped, ...newShared }, null, 2));
 };
 
-const waitForWriting = async () => {
+const waitForWriting = async (errors) => {
+  console.log(errors)
   const readCodeownersStream = fs.createReadStream(
     `${path.resolve()}/.github/CODEOWNERS`,
     "utf8"
@@ -94,37 +95,36 @@ const waitForWriting = async () => {
   return res;
 };
 
-const writeFile = () => new Promise(resolve => {
-  return resolve(
-    fs.writeFile(
-      `${path.resolve()}/lint-formatter.js`,
-      "module.exports = " + formatter.toString(),
-      (err) => {
-        if (err) console.log("err", err);
-        console.log("lint-formatter.js was copied to root");
-      }
-    )
-  );
-})
-
 const runLinterScript = () => new Promise((resolve, reject) => {
-  return writeFile().then(() => {
-    console.log("linter check is running...");
-    exec("npm run test:lint", (error, stdout) => {
+  const formatter = (results) => {
+    const byRuleId = results.reduce((map, current) => {
+      current.messages.forEach(({ ruleId, line, column }) => {
+        if (!map[ruleId]) {
+          map[ruleId] = [];
+        }
+
+        const occurrence = `${current.filePath}:${line}:${column}`;
+        map[ruleId].push(occurrence);
+      });
+      return map;
+    }, {});
+
+    return JSON.stringify(byRuleId, null, 2);
+  };
+  return exec("npm run test:lint", (error, stdout) => {
       if (error) {
         reject(error);
         return;
       }
-      resolve(stdout);
+      resolve(formatter(stdout));
     });
-  })
   })
 
 module.exports = () => {
   runLinterScript()
-    .then(() => {
-      console.log("Linter finished! Ouput is creating for you...");
-      waitForWriting();
+    .then((res) => {
+      console.log("Linter finished! Output is creating for you...");
+      waitForWriting(res);
     })
     .catch((err) => console.log("A complete log of test:lint run"))
     .finally(() => {
