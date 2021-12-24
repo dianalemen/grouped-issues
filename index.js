@@ -89,7 +89,7 @@ const waitForWriting = async (errors) => {
 };
 
 const loadFormatter = new Promise((resolve) =>
-  resolve(eslint.loadFormatter("./lint-formatter.js"))
+  resolve(eslint.loadFormatter("lint-formatter.js"))
 );
 const executeLinter = new Promise((resolve) => {
   return resolve(
