@@ -82,7 +82,7 @@ const waitForWriting = async (errors) => {
       errors,
       writeIntoFile
     );
-    return res;
+    return Promise.resolve(res);
   } else {
     return Promise.resolve("done!");
   }
