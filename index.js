@@ -72,7 +72,6 @@ const writeIntoFile = (errors, owners) => {
 };
 
 const waitForWriting = async (errors) => {
-  console.log("debug...", errors);
   if (errors) {
     const readCodeownersStream = fs.createReadStream(
       `${path.resolve()}/.github/CODEOWNERS`,
@@ -85,7 +84,7 @@ const waitForWriting = async (errors) => {
     );
     return res;
   } else {
-    console.log("done!");
+    return Promise.resolve("done!");
   }
 };
 
@@ -95,6 +94,7 @@ const runLinterScript = async () => {
     `${path.resolve()}/app/javascript/{**/*,*}.{js,ts,jsx,tsx}`,
   ]);
 
+  console.log("debug...", formatter.format(results));
   return formatter.format(results);
 };
 
