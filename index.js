@@ -72,6 +72,7 @@ const writeIntoFile = (errors, owners) => {
 };
 
 const waitForWriting = async (errors) => {
+  console.log("debug...", errors);
   if (errors) {
     const readCodeownersStream = fs.createReadStream(
       `${path.resolve()}/.github/CODEOWNERS`,
