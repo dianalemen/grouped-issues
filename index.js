@@ -88,15 +88,23 @@ const waitForWriting = async (errors) => {
   }
 };
 
-const runLinterScript = async () => {
-  const formatter = await eslint.loadFormatter("./lint-formatter.js");
-  const results = await eslint.lintFiles([
-    `${path.resolve()}/app/javascript/{**/*,*}.{js,ts,jsx,tsx}`,
-  ]);
+const loadFormatter = new Promise((resolve) =>
+  resolve(eslint.loadFormatter("./lint-formatter.js"))
+);
+const executeLinter = new Promise((resolve) => {
+  return resolve(
+    eslint.lintFiles([
+      `${path.resolve()}/app/javascript/{**/*,*}.{js,ts,jsx,tsx}`,
+    ])
+  );
+});
 
-  console.log("debug...", formatter.format(results));
-  return formatter.format(results);
-};
+const runLinterScript = () =>
+  new Promise((resolve) => {
+    Promise.all([loadFormatter, executeLinter]).then(([formatter, results]) => {
+      return resolve(formatter.format(results));
+    });
+  });
 
 module.exports = () => {
   runLinterScript()
@@ -104,8 +112,11 @@ module.exports = () => {
       console.log("Linter finished! Output is creating for you...");
       waitForWriting(res);
     })
-    .catch((err) => console.log("A complete log of test:lint run"))
-    .finally(() => {
-      waitForWriting()
+    .catch((err) => {
+      console.log(err);
+      console.log("A complete log of test:lint run");
+    })
+    .finally((res) => {
+      waitForWriting(res);
     });
 };
