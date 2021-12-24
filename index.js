@@ -1,38 +1,32 @@
 const fs = require("fs");
 const path = require("path");
-const { stdout } = require('process');
-const { exec } = require("child_process");
+const { stdout } = require("process");
+const { ESLint } = require("eslint");
 
-const formatter = require("./lint-formatter");
+const eslint = new ESLint();
 
-function streamToString(fStream, sStream, cb) {
+function streamToString(stream, errors, cb) {
   return new Promise((resolve) => {
-    const errorChunks = [];
+    const errorChunks = errors;
     let ownerChunks = [];
 
-    fStream.on("data", (chunk) => {
-      errorChunks.push(chunk.toString());
+    stream.on("data", (chunk) => {
+      ownerChunks = chunk
+        .split("\n")
+        .filter((val) => val.includes("@"))
+        .map((val) => val.replaceAll("**", "").replaceAll("*", ""))
+        .reduce((acc, val) => {
+          const [filePath, owner] = val.replace(/\s\s+/g, " ").split(" ");
+          acc[owner]
+            ? (acc[owner] = [...acc[owner], filePath])
+            : (acc[owner] = [filePath]);
+          return acc;
+        }, {});
     });
 
-    fStream.on("end", () => {
-      sStream.on("data", (chunk) => {
-        ownerChunks = chunk
-          .split("\n")
-          .filter((val) => val.includes("@"))
-          .map((val) => val.replaceAll("**", "").replaceAll("*", ""))
-          .reduce((acc, val) => {
-            const [filePath, owner] = val.replace(/\s\s+/g, " ").split(" ");
-            acc[owner]
-              ? (acc[owner] = [...acc[owner], filePath])
-              : (acc[owner] = [filePath]);
-            return acc;
-          }, {});
-      });
-
-      sStream.on("end", () => {
-        cb(JSON.parse(errorChunks.join("")), ownerChunks);
-        resolve("done!");
-      });
+    stream.on("end", () => {
+      cb(errorChunks, ownerChunks);
+      resolve("done!");
     });
   });
 }
@@ -41,7 +35,7 @@ const writeIntoFile = (errors, owners) => {
   const grouppedErrors = [];
   const shared = {};
   const gruoped = Object.entries(owners).reduce((acc, [key, value]) => {
-    const gruopedTest = Object.entries(errors).reduce(
+    const gruopedTest = Object.entries(JSON.parse(errors)).reduce(
       (errAcc, [errKey, errVal]) => {
         errVal.forEach((error) => {
           value.forEach((errPath) => {
@@ -78,47 +72,30 @@ const writeIntoFile = (errors, owners) => {
 };
 
 const waitForWriting = async (errors) => {
-  console.log(errors)
-  const readCodeownersStream = fs.createReadStream(
-    `${path.resolve()}/.github/CODEOWNERS`,
-    "utf8"
-  );
-  const readErrorStream = fs.createReadStream(
-    `${path.resolve()}/results.json`,
-    "utf8"
-  );
-  const res = await streamToString(
-    readErrorStream,
-    readCodeownersStream,
-    writeIntoFile
-  );
-  return res;
+  if (errors) {
+    const readCodeownersStream = fs.createReadStream(
+      `${path.resolve()}/.github/CODEOWNERS`,
+      "utf8"
+    );
+    const res = await streamToString(
+      readCodeownersStream,
+      errors,
+      writeIntoFile
+    );
+    return res;
+  } else {
+    console.log("done!");
+  }
 };
 
-const runLinterScript = () => new Promise((resolve, reject) => {
-  const formatter = (results) => {
-    const byRuleId = results.reduce((map, current) => {
-      current.messages.forEach(({ ruleId, line, column }) => {
-        if (!map[ruleId]) {
-          map[ruleId] = [];
-        }
+const runLinterScript = async () => {
+  const formatter = await eslint.loadFormatter("./lint-formatter.js");
+  const results = await eslint.lintFiles([
+    `${path.resolve()}/app/javascript/{**/*,*}.{js,ts,jsx,tsx}`,
+  ]);
 
-        const occurrence = `${current.filePath}:${line}:${column}`;
-        map[ruleId].push(occurrence);
-      });
-      return map;
-    }, {});
-
-    return JSON.stringify(byRuleId, null, 2);
-  };
-  return exec("npm run test:lint", (error, stdout) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(formatter(stdout));
-    });
-  })
+  return formatter.format(results);
+};
 
 module.exports = () => {
   runLinterScript()
@@ -128,11 +105,6 @@ module.exports = () => {
     })
     .catch((err) => console.log("A complete log of test:lint run"))
     .finally(() => {
-      waitForWriting().then(() => {
-        fs.rm(`${path.resolve()}/lint-formatter.js`, {}, (err) =>
-          console.log(err)
-        );
-        fs.rm(`${path.resolve()}/results.json`, {}, (err) => console.log(err));
-      });
+      waitForWriting()
     });
 };
