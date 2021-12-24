@@ -8,8 +8,10 @@
   },
   "dependencies": {
     "child_process": "^1.0.2",
-    "eslint": "^8.5.0",
     "fs": "^0.0.1-security"
+  },
+  "peerDependencies": {
+    "eslint": "^7.0.0"
   },
   "devDependencies": {},
   "scripts": {
